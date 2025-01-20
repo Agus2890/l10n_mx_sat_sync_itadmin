@@ -120,66 +120,66 @@ class CfdiInvoiceAttachment(models.TransientModel):
                     continue
 
                 # file_content = base64.b64decode(attachment.datas)
-                try:
-                    res = None
-                    if create_so_po:
-                        if attachment.cfdi_type == 'I':
-                            res = self.import_sale_order(attachment.datas)
-                        elif attachment.cfdi_type == 'SI':
-                            res = self.import_purchase_order(attachment.datas)
-                        else:
-                            continue
+                # try:
+                res = None
+                if create_so_po:
+                    if attachment.cfdi_type == 'I':
+                        res = self.import_sale_order(attachment.datas)
+                    elif attachment.cfdi_type == 'SI':
+                        res = self.import_purchase_order(attachment.datas)
                     else:
-                        if attachment.cfdi_type == 'I':
-                            res = self.import_customer_invoice(attachment.datas, self.journal_id)
-                        elif attachment.cfdi_type == 'SI':
-                            res = self.import_supplier_invoice(attachment.datas, self.supplier_journal_id)
-                        elif attachment.cfdi_type == 'E':
-                            res = self.import_credit_note(attachment.datas, self.credit_journal_id)
-                        elif attachment.cfdi_type == 'SE':
-                            res = self.import_supplier_credit_note(attachment.datas, self.credit_supplier_journal_id)
+                        continue
+                else:
+                    if attachment.cfdi_type == 'I':
+                        res = self.import_customer_invoice(attachment.datas, self.journal_id)
+                    elif attachment.cfdi_type == 'SI':
+                        res = self.import_supplier_invoice(attachment.datas, self.supplier_journal_id)
+                    elif attachment.cfdi_type == 'E':
+                        res = self.import_credit_note(attachment.datas, self.credit_journal_id)
+                    elif attachment.cfdi_type == 'SE':
+                        res = self.import_supplier_credit_note(attachment.datas, self.credit_supplier_journal_id)
 
-                    if res and type(res) == dict:
-                        val = {'creado_en_odoo': True, }
-                        if res.get('res_model') == 'account.move':
-                            val.update({'invoice_ids': [(6, 0, [res.get('res_id')])], 'res_id': res.get('res_id'),
-                                        'res_model': 'account.move'})
-                            create_invoice_ids.append(res.get('res_id'))
-                        attachment.write(val)
+                if res and type(res) == dict:
+                    val = {'creado_en_odoo': True, }
+                    if res.get('res_model') == 'account.move':
+                        val.update({'invoice_ids': [(6, 0, [res.get('res_id')])], 'res_id': res.get('res_id'),
+                                    'res_model': 'account.move'})
+                        create_invoice_ids.append(res.get('res_id'))
+                    attachment.write(val)
 
-                except Exception as e:
-                    if hasattr(e, 'name'):
-                        not_imported_attachment.update({attachment: e.name})
-                    elif hasattr(e, 'message'):
-                        not_imported_attachment.update({attachment: e.message})
-                    else:
-                        not_imported_attachment.update({attachment: str(e)})
-                    self.env.cr.rollback()
-                    continue
-                imported_attachment.append(attachment.name)
+            #     except Exception as e:
+            #         if hasattr(e, 'name'):
+            #             not_imported_attachment.update({attachment: e.name})
+            #         elif hasattr(e, 'message'):
+            #             not_imported_attachment.update({attachment: e.message})
+            #         else:
+            #             not_imported_attachment.update({attachment: str(e)})
+            #         self.env.cr.rollback()
+            #         continue
+            #     imported_attachment.append(attachment.name)
 
-            ctx = {'create_invoice_ids': create_invoice_ids}
-            if existed_attachment:
-                ctx.update({'existed_attachment': '<p>' + '<p></p>'.join(existed_attachment) + '</p>'})
-            if not_imported_attachment:
-                content = ''
-                for attachment, error in not_imported_attachment.items():
-                    content += '<p>' + attachment.name + ':</p> <p><strong style="color:red;">&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;bull; Error : </strong> %s </p>' % (
-                        error)
+            # ctx = {'create_invoice_ids': create_invoice_ids}
+            # if existed_attachment:
+            #     ctx.update({'existed_attachment': '<p>' + '<p></p>'.join(existed_attachment) + '</p>'})
+            # if not_imported_attachment:
+            #     content = ''
+            #     for attachment, error in not_imported_attachment.items():
+            #         content += '<p>' + attachment.name + ':</p> <p><strong style="color:red;">&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;bull; Error : </strong> %s </p>' % (
+            #             error)
 
-                ctx.update({'not_imported_attachment': content})  # '<p>'+'<p></p>'.join(not_imported_attachment)+'</p>'
+            #     ctx.update({'not_imported_attachment': content})  # '<p>'+'<p></p>'.join(not_imported_attachment)+'</p>'
 
-            if imported_attachment:
-                ctx.update({'imported_attachment': '<p>' + '<p></p>'.join(imported_attachment) + '</p>'})
-            return {
-                'name': "Resultado de importación",
-                'view_type': 'form',
-                'view_mode': 'form',
-                'res_model': 'import.invoice.process.message',
-                'type': 'ir.actions.act_window',
-                'target': 'new',
-                'context': ctx,
-            }
+            # if imported_attachment:
+            #     ctx.update({'imported_attachment': '<p>' + '<p></p>'.join(imported_attachment) + '</p>'})
+            # return {
+            #     'name': "Resultado de importación",
+            #     'view_type': 'form',
+            #     'view_mode': 'form',
+            #     'res_model': 'import.invoice.process.message',
+            #     'type': 'ir.actions.act_window',
+            #     'target': 'new',
+            #     'context': ctx,
+            # }
         return
 
     @api.model
@@ -238,13 +238,13 @@ class CfdiInvoiceAttachment(models.TransientModel):
         relacionado_data = data.get('Comprobante', {}).get('CfdiRelacionados', {})
 
         vendor_uuid = timbrado_data.get('@UUID')
-
-        if vendor_uuid:
-            vendor_order_exist = invoice_obj.search([('cfdi_folio_fiscal', '=', vendor_uuid.lower())], limit=1)
-            if not vendor_order_exist:
-                vendor_order_exist = invoice_obj.search([('cfdi_folio_fiscal', '=', vendor_uuid.upper())], limit=1)
-            if vendor_order_exist:
-                raise UserError("Factura ya existente con ese UUID %s" % (vendor_uuid))
+        #migracion
+        #if vendor_uuid:
+        #    vendor_order_exist = invoice_obj.search([('cfdi_folio_fiscal', '=', vendor_uuid.lower())], limit=1)
+        #    if not vendor_order_exist:
+        #        vendor_order_exist = invoice_obj.search([('cfdi_folio_fiscal', '=', vendor_uuid.upper())], limit=1)
+        #    if vendor_order_exist:
+        #        raise UserError("Factura ya existente con ese UUID %s" % (vendor_uuid))
 
         if customer_reference != '':
             invoice_exist = invoice_obj.search([('ref', '=', customer_reference), ('move_type', '=', 'out_invoice')],
@@ -264,11 +264,11 @@ class CfdiInvoiceAttachment(models.TransientModel):
             'move_type': 'out_invoice',
             'partner_id': partner.id,
             'ref': customer_reference,
-            'cfdi_folio_fiscal': timbrado_data.get('@UUID'),
-            'rfcprovcertif': timbrado_data.get('@RfcProvCertif'),
-            'payment_type_id': self.env['payment.type'].sudo().search([('code','=',data.get('Comprobante', {}).get('@FormaPago', {}))]),
-            'payment_method': data.get('Comprobante', {}).get('@MetodoPago', {}),
-            'usocfdi_id': self.env['uso.cfdi'].sudo().search([('code','=',receptor_data.get('@UsoCFDI'))]),
+            #'cfdi_folio_fiscal': timbrado_data.get('@UUID'),
+            #'rfcprovcertif': timbrado_data.get('@RfcProvCertif'),
+            #'payment_type_id': self.env['payment.type'].sudo().search([('code','=',data.get('Comprobante', {}).get('@FormaPago', {}))]),
+            #'payment_method': data.get('Comprobante', {}).get('@MetodoPago', {}),
+            #'usocfdi_id': self.env['uso.cfdi'].sudo().search([('code','=',receptor_data.get('@UsoCFDI'))]),
             # 'factura_cfdi': True,
             # 'number_folio': data.get('Comprobante', {}).get('@Folio'),
             'name': data.get('Comprobante', {}).get('@Folio'),
@@ -277,15 +277,15 @@ class CfdiInvoiceAttachment(models.TransientModel):
             # 'tipocambio': data.get('Comprobante', {}).get('@TipoCambio', '1'),
             # # 'currency_id.name': data.get('Comprobante',{}).get('@Moneda'),
             # 'moneda': data.get('Comprobante', {}).get('@Moneda'),
-            'certificado': timbrado_data.get('@Certificado'),
-            'cfdi_no_certificado': timbrado_data.get('@NoCertificadoSAT'),
-            'cfdi_fecha_timbrado': timbrado_data.get('@FechaTimbrado') and parse(
-                timbrado_data.get('@FechaTimbrado')).strftime(DEFAULT_SERVER_DATETIME_FORMAT) or False,
-            'no_certificado': timbrado_data.get('@NoCertificado'),
+            #'certificado': timbrado_data.get('@Certificado'),
+            #'cfdi_no_certificado': timbrado_data.get('@NoCertificadoSAT'),
+            #'cfdi_fecha_timbrado': timbrado_data.get('@FechaTimbrado') and parse(
+            #    timbrado_data.get('@FechaTimbrado')).strftime(DEFAULT_SERVER_DATETIME_FORMAT) or False,
+            #'no_certificado': timbrado_data.get('@NoCertificado'),
             'invoice_date': timbrado_data.get('@FechaTimbrado') and parse(
                 timbrado_data.get('@FechaTimbrado')).strftime(DEFAULT_SERVER_DATETIME_FORMAT) or False,
-            'sello': timbrado_data.get('@SelloCFD'),
-            'cfdi_sello': timbrado_data.get('@SelloSAT'),
+            #'sello': timbrado_data.get('@SelloCFD'),
+            #'cfdi_sello': timbrado_data.get('@SelloSAT'),
             'currency_id': journal.currency_id.id or journal.company_id.currency_id.id or self.env.company.currency_id.id,
             'company_id': self.env.company.id,
             'journal_id': journal.id,
@@ -450,13 +450,13 @@ class CfdiInvoiceAttachment(models.TransientModel):
         timbrado_data = data.get('Comprobante', {}).get('Complemento', {}).get('TimbreFiscalDigital', {})
         relacionado_data = data.get('Comprobante', {}).get('CfdiRelacionados', {})
         vendor_uuid = timbrado_data.get('@UUID')
-
-        if vendor_uuid != '':
-            vendor_order_exist = invoice_obj.search([('cfdi_folio_fiscal', '=', vendor_uuid.lower())], limit=1)
-            if not vendor_order_exist:
-                vendor_order_exist = invoice_obj.search([('cfdi_folio_fiscal', '=', vendor_uuid.upper())], limit=1)
-            if vendor_order_exist:
-                raise UserError("Factura ya existente con ese UUID %s" % (vendor_uuid))
+        #migracion
+        #if vendor_uuid != '':
+        #    vendor_order_exist = invoice_obj.search([('cfdi_folio_fiscal', '=', vendor_uuid.lower())], limit=1)
+        #    if not vendor_order_exist:
+        #        vendor_order_exist = invoice_obj.search([('cfdi_folio_fiscal', '=', vendor_uuid.upper())], limit=1)
+        #    if vendor_order_exist:
+        #        raise UserError("Factura ya existente con ese UUID %s" % (vendor_uuid))
 
         if vendor_reference != '':
             invoice_exist = invoice_obj.search([('ref', '=', vendor_reference), ('move_type', '=', 'in_invoice')],
@@ -476,28 +476,29 @@ class CfdiInvoiceAttachment(models.TransientModel):
             'move_type': 'in_invoice',
             'partner_id': vendor.id,
             'ref': vendor_reference,
-            'cfdi_folio_fiscal': timbrado_data.get('@UUID'),
-            'payment_type_id': self.env['payment.type'].sudo().search([('code','=',data.get('Comprobante', {}).get('@FormaPago', {}))]),
-            'payment_method': data.get('Comprobante', {}).get('@MetodoPago', {}),
-            'usocfdi_id': self.env['uso.cfdi'].sudo().search([('code','=',receptor_data.get('@UsoCFDI'))]),
-            # 'factura_cfdi': True,
-            'number_folio': data.get('Comprobante', {}).get('@Folio'),
-            'tipo_comprobante': data.get('Comprobante', {}).get('@TipoDeComprobante'),
-            'estado_factura': 'factura_correcta',
-            'tipocambio': data.get('Comprobante', {}).get('@TipoCambio', '1'),
-            # 'currency_id.name': data.get('Comprobante',{}).get('@Moneda'),
-            'moneda': data.get('Comprobante', {}).get('@Moneda'),
-            'numero_cetificado': timbrado_data.get('@NoCertificadoSAT'),
-            'fecha_certificacion': timbrado_data.get('@FechaTimbrado') and parse(
-                timbrado_data.get('@FechaTimbrado')).strftime(DEFAULT_SERVER_DATETIME_FORMAT) or False,
-            'fecha_factura': timbrado_data.get('@FechaTimbrado') and parse(
-                timbrado_data.get('@FechaTimbrado')).strftime(DEFAULT_SERVER_DATETIME_FORMAT) or False,
-            'selo_digital_cdfi': timbrado_data.get('@SelloCFD'),
-            'selo_sat': timbrado_data.get('@SelloSAT'),
+            #'cfdi_folio_fiscal': timbrado_data.get('@UUID'),
+            #'payment_type_id': self.env['payment.type'].sudo().search([('code','=',data.get('Comprobante', {}).get('@FormaPago', {}))]),
+            #'payment_method': data.get('Comprobante', {}).get('@MetodoPago', {}),
+            #'usocfdi_id': self.env['uso.cfdi'].sudo().search([('code','=',receptor_data.get('@UsoCFDI'))]),
+
+
+            #'number_folio': data.get('Comprobante', {}).get('@Folio'),
+            #'tipo_comprobante': data.get('Comprobante', {}).get('@TipoDeComprobante'),
+            #'estado_factura': 'factura_correcta',
+            #'tipocambio': data.get('Comprobante', {}).get('@TipoCambio', '1'),
+
+            #'moneda': data.get('Comprobante', {}).get('@Moneda'),
+            #'numero_cetificado': timbrado_data.get('@NoCertificadoSAT'),
+            #'fecha_certificacion': timbrado_data.get('@FechaTimbrado') and parse(
+            #    timbrado_data.get('@FechaTimbrado')).strftime(DEFAULT_SERVER_DATETIME_FORMAT) or False,
+            #'fecha_factura': timbrado_data.get('@FechaTimbrado') and parse(
+            #    timbrado_data.get('@FechaTimbrado')).strftime(DEFAULT_SERVER_DATETIME_FORMAT) or False,
+            #'selo_digital_cdfi': timbrado_data.get('@SelloCFD'),
+            #'selo_sat': timbrado_data.get('@SelloSAT'),
             'currency_id': journal.currency_id.id or journal.company_id.currency_id.id or self.env.company.currency_id.id,
             'company_id': self.env.company.id,
             'journal_id': journal.id,
-            'total_factura': data.get('Comprobante', {}).get('@Total'),
+            #'total_factura': data.get('Comprobante', {}).get('@Total'),
         }
 
         if relacionado_data:
@@ -569,14 +570,15 @@ class CfdiInvoiceAttachment(models.TransientModel):
                             tasa = str(amount_tasa)
                         else:
                             tasa = str(0)
-                        tax_exist = tax_obj.search(
-                            [('impuesto', '=', tax.get('@Impuesto')), ('type_tax_use', '=', 'purchase'),
-                             ('tipo_factor', '=', tax.get('@TipoFactor')), ('amount', '=', tasa),
-                             ('company_id', '=', self.env.company.id)], limit=1)
-                        if not tax_exist:
-                            raise UserError(
-                                "La factura contiene impuestos que no han sido configurados. Por favor configure los impuestos primero")
-                        tax_ids.append(tax_exist.id)
+                        #migracion
+                        #tax_exist = tax_obj.search(
+                        #    [('impuesto', '=', tax.get('@Impuesto')), ('type_tax_use', '=', 'purchase'),
+                        #     ('tipo_factor', '=', tax.get('@TipoFactor')), ('amount', '=', tasa),
+                        #     ('company_id', '=', self.env.company.id)], limit=1)
+                        #if not tax_exist:
+                        #    raise UserError(
+                        #        "La factura contiene impuestos que no han sido configurados. Por favor configure los impuestos primero")
+                        #tax_ids.append(tax_exist.id)
                         k = k + 1
             product_exist = self.get_or_create_product(default_code, product_name, clave_unidad, unit_price,
                                                        clave_producto, sale_ok=False, purchase_ok=True)
