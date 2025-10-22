@@ -41,6 +41,8 @@
             #'l10n_mx_sat_sync_itadmin/static/src/xml/list_buttons.xml',
             #'l10n_mx_sat_sync_itadmin/static/src/css/**/*',
             #'l10n_mx_sat_sync_itadmin/static/src/xml/*.xml',
+            #'l10n_mx_sat_sync_itadmin/static/src/js/list_button.js',
+            #'l10n_mx_sat_sync_itadmin/static/src/xml/list_buttons.xml',
         ],
         'web.assets_qweb': [
             #'l10n_mx_sat_sync_itadmin/static/src/xml/*.xml',

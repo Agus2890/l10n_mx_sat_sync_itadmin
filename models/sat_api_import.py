@@ -9,6 +9,9 @@ from OpenSSL import crypto
 from lxml import etree
 from odoo.exceptions import ValidationError
 
+import logging
+_logger = logging.getLogger(__name__)
+
 
 def get_element(element_root, xpath, namespace):
     element = element_root.find(xpath, namespace)
@@ -51,6 +54,7 @@ class SAT:
         return key_pem
 
     def check_response(self, response: requests.Response, result_xpath, external_nsmap):
+        
         try:
             response_xml = etree.fromstring(
                 response.text,
@@ -58,9 +62,14 @@ class SAT:
             )
         except Exception:
             raise Exception(response.text)
+        _logger.info("jjjjjjjjj",response.text)
+        #_logger.info("iiiiiiiiiiii",requests.codes['ok'])
         if response.status_code != requests.codes['ok']:
             error = get_element(response_xml, 's:Body/s:Fault/faultstring', external_nsmap)
-            raise Exception(error)
+            fault_string = response_xml.xpath('//s:Fault/faultstring/text()', namespaces=external_nsmap)
+            _logger.error("SOAP Fault: %s", fault_string)
+            raise Exception("0erererer.."+str(error))
+        #_logger.info("xxaxaxaxaxaxaxax",response_xml)
         return get_element(response_xml, result_xpath, external_nsmap)
 
     def get_headers(self, soap_action, token=False):
@@ -146,7 +155,10 @@ class SAT:
         return etree.tostring(element_root, method='c14n', exclusive=1)
 
     def soap_generate_token(self, certificate: crypto.X509, private_key: crypto.PKey):
+        #soap_url = 'https://cfdidescargamasivasolicitud.clouda.sat.gob.mx/Autenticacion/Autenticacion.svc'
         soap_url = 'https://cfdidescargamasivasolicitud.clouda.sat.gob.mx/Autenticacion/Autenticacion.svc'
+
+        #soap_action = 'http://DescargaMasivaTerceros.gob.mx/IAutenticacion/Autentica'
         soap_action = 'http://DescargaMasivaTerceros.gob.mx/IAutenticacion/Autentica'
         result_xpath = 's:Body/AutenticaResponse/AutenticaResult'
         internal_nsmap = {
@@ -156,8 +168,14 @@ class SAT:
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
             'des': 'http://DescargaMasivaTerceros.sat.gob.mx',
         }
+        #external_nsmap = {
+        #    '': 'http://DescargaMasivaTerceros.gob.mx',
+        #    's': 'http://schemas.xmlsoap.org/soap/envelope/',
+        #    'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
+        #    'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
+        #}
         external_nsmap = {
-            '': 'http://DescargaMasivaTerceros.gob.mx',
+            '': 'http://DescargaMasivaTerceros.sat.gob.mx',
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
@@ -186,7 +204,7 @@ class SAT:
                '</SignedInfo><SignatureValue></SignatureValue><KeyInfo><o:SecurityTokenReference><o:Reference ' \
                'ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" ' \
                'URI="#BinarySecurityToken"/></o:SecurityTokenReference></KeyInfo></Signature></o:Security></s:Header>' \
-               '<s:Body><Autentica xmlns="http://DescargaMasivaTerceros.gob.mx"/></s:Body></s:Envelope>'.format(
+               '<s:Body><Autentica xmlns="http://DescargaMasivaTerceros.sat.gob.mx"/></s:Body></s:Envelope>'.format(
             **arguments)
         parser = etree.XMLParser(remove_blank_text=True)
         element_root = etree.fromstring(body, parser)
@@ -208,6 +226,10 @@ class SAT:
         set_element(element, signed_info)
 
         soap_request = etree.tostring(element_root, method='c14n', exclusive=1)
+
+        _logger.info("SOAPAction: %s", soap_action)
+        _logger.info("SOAP URL: %s", soap_url)
+        _logger.info("SOAP Headers: %s", self.get_headers(soap_action))
         communication = requests.post(
             soap_url,
             soap_request,
@@ -215,7 +237,9 @@ class SAT:
             verify=True,
             timeout=15,
         )
+        _logger.info("1xxxxxxxxxxxxxxxx",communication.text)
         token = self.check_response(communication, result_xpath, external_nsmap)
+        _logger.info("2.........xxxxxxxxxxxxxxxx",token.text)
         self.token = token.text
         return token.text
 

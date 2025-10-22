@@ -62,7 +62,7 @@
         <field name="model">ir.attachment</field>
         <field name="arch" type="xml">
             <!-- js_class="itadmin_tree" -->
-            <list string="Attachments" default_order="date_cfdi desc" >
+            <list string="Attachments"  default_order="date_cfdi desc" >
                 <field name="date_cfdi"/>
                 <field name="cfdi_uuid"/>
                 <field name="serie_folio"/>
@@ -177,5 +177,4 @@
              records.action_download_state()
         </field>
     </record>
-
 </odoo>
