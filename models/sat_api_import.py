@@ -155,57 +155,64 @@ class SAT:
         return etree.tostring(element_root, method='c14n', exclusive=1)
 
     def soap_generate_token(self, certificate: crypto.X509, private_key: crypto.PKey):
-        #soap_url = 'https://cfdidescargamasivasolicitud.clouda.sat.gob.mx/Autenticacion/Autenticacion.svc'
         soap_url = 'https://cfdidescargamasivasolicitud.clouda.sat.gob.mx/Autenticacion/Autenticacion.svc'
-
-        #soap_action = 'http://DescargaMasivaTerceros.gob.mx/IAutenticacion/Autentica'
         soap_action = 'http://DescargaMasivaTerceros.gob.mx/IAutenticacion/Autentica'
         result_xpath = 's:Body/AutenticaResponse/AutenticaResult'
+
         internal_nsmap = {
             '': 'http://www.w3.org/2000/09/xmldsig#',
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
-            'des': 'http://DescargaMasivaTerceros.sat.gob.mx',
+            'des': 'http://DescargaMasivaTerceros.gob.mx',  # 👈 aquí sin ".sat"
         }
-        #external_nsmap = {
-        #    '': 'http://DescargaMasivaTerceros.gob.mx',
-        #    's': 'http://schemas.xmlsoap.org/soap/envelope/',
-        #    'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
-        #    'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
-        #}
         external_nsmap = {
-            '': 'http://DescargaMasivaTerceros.sat.gob.mx',
+            '': 'http://DescargaMasivaTerceros.gob.mx',
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
         }
+
         date_created = datetime.utcnow()
         date_expires = date_created + timedelta(seconds=300)
         date_created = date_created.isoformat()
         date_expires = date_expires.isoformat()
-        arguments = {
-            'created': date_created,
-            'expires': date_expires,
-        }
-        body = '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" ' \
-               'xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" ' \
-               'xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">' \
-               '<s:Header><o:Security s:mustUnderstand="1"><u:Timestamp u:Id="Timestamp"><u:Created>{created}</u:Created>' \
-               '<u:Expires>{expires}</u:Expires></u:Timestamp><o:BinarySecurityToken u:Id="BinarySecurityToken" ' \
-               'ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" ' \
-               'EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">' \
-               '</o:BinarySecurityToken><Signature xmlns="http://www.w3.org/2000/09/xmldsig#">' \
-               '<SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>' \
-               '<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI="#Timestamp">' \
-               '<Transforms><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></Transforms>' \
-               '<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>' \
-               '<DigestValue></DigestValue></Reference>' \
-               '</SignedInfo><SignatureValue></SignatureValue><KeyInfo><o:SecurityTokenReference><o:Reference ' \
-               'ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" ' \
-               'URI="#BinarySecurityToken"/></o:SecurityTokenReference></KeyInfo></Signature></o:Security></s:Header>' \
-               '<s:Body><Autentica xmlns="http://DescargaMasivaTerceros.sat.gob.mx"/></s:Body></s:Envelope>'.format(
-            **arguments)
+        arguments = {'created': date_created, 'expires': date_expires}
+
+        body = (
+            '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
+            'xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" '
+            'xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">'
+            '<s:Header><o:Security s:mustUnderstand="1">'
+            '<u:Timestamp u:Id="Timestamp">'
+            '<u:Created>{created}</u:Created>'
+            '<u:Expires>{expires}</u:Expires>'
+            '</u:Timestamp>'
+            '<o:BinarySecurityToken u:Id="BinarySecurityToken" '
+            'ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" '
+            'EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">'
+            '</o:BinarySecurityToken>'
+            '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">'
+            '<SignedInfo>'
+            '<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>'
+            '<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>'
+            '<Reference URI="#Timestamp">'
+            '<Transforms><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></Transforms>'
+            '<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>'
+            '<DigestValue></DigestValue>'
+            '</Reference>'
+            '</SignedInfo>'
+            '<SignatureValue></SignatureValue>'
+            '<KeyInfo><o:SecurityTokenReference>'
+            '<o:Reference ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" '
+            'URI="#BinarySecurityToken"/>'
+            '</o:SecurityTokenReference></KeyInfo>'
+            '</Signature>'
+            '</o:Security></s:Header>'
+            '<s:Body><Autentica xmlns="http://DescargaMasivaTerceros.gob.mx"/></s:Body>'
+            '</s:Envelope>'
+        ).format(**arguments)
+
         parser = etree.XMLParser(remove_blank_text=True)
         element_root = etree.fromstring(body, parser)
 
@@ -214,22 +221,16 @@ class SAT:
 
         element = get_element(element_root, 's:Header/o:Security/u:Timestamp', internal_nsmap)
         element_digest = hashlib.sha1(etree.tostring(element, method='c14n', exclusive=1)).digest()
-        element = get_element(element_root, 's:Header/o:Security/Signature/SignedInfo/Reference/DigestValue',
-                              internal_nsmap)
+        element = get_element(element_root, 's:Header/o:Security/Signature/SignedInfo/Reference/DigestValue', internal_nsmap)
         set_element(element, base64.b64encode(element_digest))
 
         element_to_sign = get_element(element_root, 's:Header/o:Security/Signature/SignedInfo', internal_nsmap)
         element_to_sign = etree.tostring(element_to_sign, method='c14n', exclusive=1)
-        signed_info = base64.b64encode(crypto.sign(private_key, element_to_sign, 'sha1')).decode("UTF-8").replace("\n",
-                                                                                                                  "")
+        signed_info = base64.b64encode(crypto.sign(private_key, element_to_sign, 'sha1')).decode("UTF-8").replace("\n", "")
         element = get_element(element_root, 's:Header/o:Security/Signature/SignatureValue', internal_nsmap)
         set_element(element, signed_info)
 
         soap_request = etree.tostring(element_root, method='c14n', exclusive=1)
-
-        _logger.info("SOAPAction: %s", soap_action)
-        _logger.info("SOAP URL: %s", soap_url)
-        _logger.info("SOAP Headers: %s", self.get_headers(soap_action))
         communication = requests.post(
             soap_url,
             soap_request,
@@ -237,9 +238,7 @@ class SAT:
             verify=True,
             timeout=15,
         )
-        _logger.info("1xxxxxxxxxxxxxxxx",communication.text)
         token = self.check_response(communication, result_xpath, external_nsmap)
-        _logger.info("2.........xxxxxxxxxxxxxxxx",token.text)
         self.token = token.text
         return token.text
 
