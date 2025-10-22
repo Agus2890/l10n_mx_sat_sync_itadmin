@@ -72,15 +72,26 @@ class SAT:
         #_logger.info("xxaxaxaxaxaxaxax",response_xml)
         return get_element(response_xml, result_xpath, external_nsmap)
 
+    # def get_headers(self, soap_action, token=False):
+    #     headers = {
+    #         'Content-type': 'text/xml;charset="utf-8"',
+    #         'Accept': 'text/xml',
+    #         'Cache-Control': 'no-cache',
+    #         'SOAPAction': soap_action,
+    #         'Authorization': 'WRAP access_token="{}"'.format(token) if token else ''
+    #     }
+    #     return headers
     def get_headers(self, soap_action, token=False):
         headers = {
-            'Content-type': 'text/xml;charset="utf-8"',
+            'Content-Type': 'text/xml; charset=utf-8',
             'Accept': 'text/xml',
             'Cache-Control': 'no-cache',
             'SOAPAction': soap_action,
-            'Authorization': 'WRAP access_token="{}"'.format(token) if token else ''
         }
+        if token:
+            headers['Authorization'] = f'WRAP access_token="{token}"'
         return headers
+
 
     def sign(self, esignature_cer_bin, solicitud):
         internal_nsmap = {
@@ -231,6 +242,10 @@ class SAT:
         set_element(element, signed_info)
 
         soap_request = etree.tostring(element_root, method='c14n', exclusive=1)
+
+        _logger.info("==== SOAP URL: %s", soap_url)
+        _logger.info("==== SOAPAction HEADER: %s", soap_action)
+        _logger.info("==== PRIMERAS 300 CHARS XML:\n%s", soap_request[:300])
         communication = requests.post(
             soap_url,
             soap_request,
@@ -279,6 +294,10 @@ class SAT:
         xpath = 's:Body/des:SolicitaDescarga/des:solicitud'
         cer = base64.b64encode(crypto.dump_certificate(crypto.FILETYPE_ASN1, self.certificate))
         soap_request = self.prepare_soap_download_data(cer, arguments, body, xpath)
+
+        _logger.info("==== SOAP URL: %s", soap_url)
+        _logger.info("==== SOAPAction HEADER: %s", soap_action)
+        _logger.info("==== PRIMERAS 300 CHARS XML:\n%s", soap_request[:300])
         communication = requests.post(
             soap_url,
             soap_request,
