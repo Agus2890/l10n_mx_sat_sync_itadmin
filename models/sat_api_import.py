@@ -72,26 +72,24 @@ class SAT:
         #_logger.info("xxaxaxaxaxaxaxax",response_xml)
         return get_element(response_xml, result_xpath, external_nsmap)
 
-    # def get_headers(self, soap_action, token=False):
-    #     headers = {
-    #         'Content-type': 'text/xml;charset="utf-8"',
-    #         'Accept': 'text/xml',
-    #         'Cache-Control': 'no-cache',
-    #         'SOAPAction': soap_action,
-    #         'Authorization': 'WRAP access_token="{}"'.format(token) if token else ''
-    #     }
-    #     return headers
+    #def get_headers(self, soap_action, token=False):
+    #    headers = {
+    #        'Content-type': 'text/xml;charset="utf-8"',
+    #        'Accept': 'text/xml',
+    #        'Cache-Control': 'no-cache',
+    #        'SOAPAction': soap_action,
+    #        'Authorization': 'WRAP access_token="{}"'.format(token) if token else ''
+    #    }
+    #    return headers
+
     def get_headers(self, soap_action, token=False):
         headers = {
             'Content-Type': 'text/xml; charset=utf-8',
-            'Accept': 'text/xml',
-            'Cache-Control': 'no-cache',
-            'SOAPAction': soap_action,
+            'SOAPAction': f'"{soap_action}"',  # Entre comillas
         }
         if token:
             headers['Authorization'] = f'WRAP access_token="{token}"'
         return headers
-
 
     def sign(self, esignature_cer_bin, solicitud):
         internal_nsmap = {
@@ -175,10 +173,10 @@ class SAT:
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
-            'des': 'http://DescargaMasivaTerceros.gob.mx',  # 👈 aquí sin ".sat"
+            'des': 'http://DescargaMasivaTerceros.sat.gob.mx',  # 👈 aquí sin ".sat"
         }
         external_nsmap = {
-            '': 'http://DescargaMasivaTerceros.gob.mx',
+            '': 'http://DescargaMasivaTerceros.sat.gob.mx',
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
@@ -265,6 +263,7 @@ class SAT:
         result_xpath = 's:Body/SolicitaDescargaResponse/SolicitaDescargaResult'
         external_nsmap = {
             '': 'http://DescargaMasivaTerceros.sat.gob.mx',
+            'des': 'http://DescargaMasivaTerceros.sat.gob.mx',  # Agrega este alias
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
@@ -287,10 +286,20 @@ class SAT:
             arguments['RfcEmisor'] = self.holder_vat
         if rfc_receptor:
             arguments['RfcReceptores'] = [self.holder_vat]
-        body = '<s:Envelope xmlns:des="http://DescargaMasivaTerceros.sat.gob.mx" ' \
-               'xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Header/><s:Body><des:SolicitaDescarga>' \
-               '<des:solicitud><des:RfcReceptores><des:RfcReceptor/></des:RfcReceptores></des:solicitud>' \
-               '</des:SolicitaDescarga></s:Body></s:Envelope>'
+        body = '''<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
+           xmlns:des="http://DescargaMasivaTerceros.sat.gob.mx">
+           <s:Header/>
+           <s:Body>
+             <des:SolicitaDescarga>
+               <des:solicitud>
+                 <des:RfcSolicitante></des:RfcSolicitante>
+                 <des:RfcReceptores>
+                   <des:RfcReceptor></des:RfcReceptor>
+                 </des:RfcReceptores>
+               </des:solicitud>
+             </des:SolicitaDescarga>
+           </s:Body>
+         </s:Envelope>'''
         xpath = 's:Body/des:SolicitaDescarga/des:solicitud'
         cer = base64.b64encode(crypto.dump_certificate(crypto.FILETYPE_ASN1, self.certificate))
         soap_request = self.prepare_soap_download_data(cer, arguments, body, xpath)
