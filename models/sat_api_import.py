@@ -14,10 +14,17 @@ _logger = logging.getLogger(__name__)
 
 
 def get_element(element_root, xpath, namespace):
+    #if update:
+    #    namespace.update({'des': 'http://DescargaMasivaTerceros.sat.gob.mx'})
+    if 'ag' in namespace:
+        namespace.update({'des': 'http://DescargaMasivaTerceros.sat.gob.mx'})
+        _logger.error("get_element namespace????????????????????????????????:  {} ".format(namespace))
     element = element_root.find(xpath, namespace)
     if element is None:
-        raise ValidationError(f"{xpath} \n Element is not located in XML.")
+        _logger.error("get_element errororororor: {} dos {} y tres {} ".format(element_root,xpath,namespace))
+        raise ValidationError(f"{xpath} \n get_element_Element is not located in XML.")
     else:
+        _logger.info("get_elementg suscces succes succes {}".format(element))
         return element
 
 
@@ -53,8 +60,7 @@ class SAT:
             key_pem = keypem_file.read()
         return key_pem
 
-    def check_response(self, response: requests.Response, result_xpath, external_nsmap):
-        
+    def check_response(self, response: requests.Response, result_xpath, external_nsmap,token=False):
         try:
             response_xml = etree.fromstring(
                 response.text,
@@ -62,34 +68,37 @@ class SAT:
             )
         except Exception:
             raise Exception(response.text)
-        _logger.info("jjjjjjjjj",response.text)
-        #_logger.info("iiiiiiiiiiii",requests.codes['ok'])
-        if response.status_code != requests.codes['ok']:
+        _logger.info("aaaaaaaaaaaa {}  y el otro es {}".format(response.status_code,response.text))
+        if str(response.status_code) != str(requests.codes['ok']):
+            _logger.info("iiiiiiiiiiii {}  y el otro es {}".format(response.status_code,requests.codes['ok']))
             error = get_element(response_xml, 's:Body/s:Fault/faultstring', external_nsmap)
             fault_string = response_xml.xpath('//s:Fault/faultstring/text()', namespaces=external_nsmap)
             _logger.error("SOAP Fault: %s", fault_string)
             raise Exception("0erererer.."+str(error))
         #_logger.info("xxaxaxaxaxaxaxax",response_xml)
+        _logger.error("get_element: {} dos {} y tres {} ".format(response_xml,result_xpath,external_nsmap))
+        if token == True:
+            external_nsmap.update({'': 'http://DescargaMasivaTerceros.gob.mx'})
         return get_element(response_xml, result_xpath, external_nsmap)
 
-    #def get_headers(self, soap_action, token=False):
-    #    headers = {
-    #        'Content-type': 'text/xml;charset="utf-8"',
-    #        'Accept': 'text/xml',
-    #        'Cache-Control': 'no-cache',
-    #        'SOAPAction': soap_action,
-    #        'Authorization': 'WRAP access_token="{}"'.format(token) if token else ''
-    #    }
-    #    return headers
-
     def get_headers(self, soap_action, token=False):
-        headers = {
-            'Content-Type': 'text/xml; charset=utf-8',
-            'SOAPAction': f'"{soap_action}"',  # Entre comillas
-        }
-        if token:
-            headers['Authorization'] = f'WRAP access_token="{token}"'
-        return headers
+       headers = {
+           'Content-type': 'text/xml;charset="utf-8"',
+           'Accept': 'text/xml',
+           'Cache-Control': 'no-cache',
+           'SOAPAction': soap_action,
+           'Authorization': 'WRAP access_token="{}"'.format(token) if token else ''
+       }
+       return headers
+
+    # def get_headers(self, soap_action, token=False):
+    #     headers = {
+    #         'Content-Type': 'text/xml; charset=utf-8',
+    #         'SOAPAction': f'{soap_action}',  # Entre comillas
+    #     }
+    #     if token:
+    #         headers['Authorization'] = f'WRAP access_token="{token}"'
+    #     return headers
 
     def sign(self, esignature_cer_bin, solicitud):
         internal_nsmap = {
@@ -143,16 +152,20 @@ class SAT:
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
-            'des': 'http://DescargaMasivaTerceros.sat.gob.mx',
+            'des': 'http://DescargaMasivaTerceros.gob.mx',
+            'ag':True
         }
         element_root = etree.fromstring(body)
+        #internal_nsmap['des'] = 'http://DescargaMasivaTerceros.sat.gob.mx'
+        _logger.error("prepare_soap_download_data:  param1 {} param2 {} y param3 {} ".format(body,xpath,internal_nsmap))
+
         solicitud = get_element(element_root, xpath, internal_nsmap)
         try:
             for key in arguments:
                 if key == 'RfcReceptores':
                     for i, rfc_receptor in enumerate(arguments[key]):
                         if i == 0:
-                            xpath = 's:Body/des:SolicitaDescarga/des:solicitud/des:RfcReceptores/des:RfcReceptor'
+                            xpath = 's:Body/des:SolicitaDescargaRecibidos/des:solicitud'
                             element = get_element(element_root, xpath, internal_nsmap)
                             set_element(element, rfc_receptor)
                     continue
@@ -167,6 +180,8 @@ class SAT:
         soap_url = 'https://cfdidescargamasivasolicitud.clouda.sat.gob.mx/Autenticacion/Autenticacion.svc'
         soap_action = 'http://DescargaMasivaTerceros.gob.mx/IAutenticacion/Autentica'
         result_xpath = 's:Body/AutenticaResponse/AutenticaResult'
+        #result_xpath = 's:Body/t:AutenticaResponse/t:AutenticaResult'
+
 
         internal_nsmap = {
             '': 'http://www.w3.org/2000/09/xmldsig#',
@@ -180,6 +195,7 @@ class SAT:
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
+            #'t': 'http://DescargaMasivaTerceros.gob.mx',
         }
 
         date_created = datetime.utcnow()
@@ -241,9 +257,9 @@ class SAT:
 
         soap_request = etree.tostring(element_root, method='c14n', exclusive=1)
 
-        _logger.info("==== SOAP URL: %s", soap_url)
-        _logger.info("==== SOAPAction HEADER: %s", soap_action)
-        _logger.info("==== PRIMERAS 300 CHARS XML:\n%s", soap_request[:300])
+        #_logger.info("==== SOAP URL: %s", soap_url)
+        #_logger.info("==== SOAPAction HEADER: %s", soap_action)
+        #_logger.info("==== PRIMERAS 300 CHARS XML:\n%s", soap_request[:300])
         communication = requests.post(
             soap_url,
             soap_request,
@@ -251,7 +267,8 @@ class SAT:
             verify=True,
             timeout=15,
         )
-        token = self.check_response(communication, result_xpath, external_nsmap)
+        #_logger.error("check_response:  param1 {} param2 {} y param3 {} ".format(communication,result_xpath,external_nsmap))
+        token = self.check_response(communication, result_xpath, external_nsmap,token=True)
         self.token = token.text
         return token.text
 
@@ -259,54 +276,63 @@ class SAT:
                               tipo_comprobante=None, rfc_receptor=None,
                               estado_comprobante=None, rfc_a_cuenta_terceros=None, complemento=None, uuid=None):
         soap_url = 'https://cfdidescargamasivasolicitud.clouda.sat.gob.mx/SolicitaDescargaService.svc'
-        soap_action = 'http://DescargaMasivaTerceros.sat.gob.mx/ISolicitaDescargaService/SolicitaDescarga'
-        result_xpath = 's:Body/SolicitaDescargaResponse/SolicitaDescargaResult'
+        #soap_action = 'http://DescargaMasivaTerceros.sat.gob.mx/ISolicitaDescargaService/SolicitaDescarga'
+        soap_action = 'http://DescargaMasivaTerceros.sat.gob.mx/ISolicitaDescargaService/SolicitaDescargaRecibidos'
+        result_xpath = 's:Body/SolicitaDescargaRecibidosResponse/SolicitaDescargaRecibidosResult'
         external_nsmap = {
             '': 'http://DescargaMasivaTerceros.sat.gob.mx',
-            'des': 'http://DescargaMasivaTerceros.sat.gob.mx',  # Agrega este alias
+            'des': 'http://DescargaMasivaTerceros.gob.mx',  # Agrega este alias
             's': 'http://schemas.xmlsoap.org/soap/envelope/',
             'u': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
             'o': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
-            'h': 'http://DescargaMasivaTerceros.sat.gob.mx',
+            'h': 'http://DescargaMasivaTerceros.gob.mx',
             'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
             'xsd': 'http://www.w3.org/2001/XMLSchema',
         }
         arguments = {
-            'RfcSolicitante': self.holder_vat,
+            #'RfcSolicitante': self.holder_vat,
             'FechaFinal': date_to.isoformat(),
             'FechaInicial': date_from.isoformat(),
             'TipoSolicitud': tipo_solicitud,
             'TipoComprobante': tipo_comprobante,
-            'EstadoComprobante': estado_comprobante,
+            'EstadoComprobante': 'Vigente',#estado_comprobante,
             'RfcACuentaTerceros': rfc_a_cuenta_terceros,
             'Complemento': complemento,
             'UUID': uuid,
+            'RfcReceptor':self.holder_vat,
         }
-        if rfc_emisor:
-            arguments['RfcEmisor'] = self.holder_vat
-        if rfc_receptor:
-            arguments['RfcReceptores'] = [self.holder_vat]
+        #if rfc_emisor:
+        #    arguments['RfcEmisor'] = self.holder_vat
+        #if rfc_receptor:
+        #    arguments['RfcReceptores'] = [self.holder_vat]
+        #<des:RfcSolicitante></des:RfcSolicitante>
         body = '''<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" 
-           xmlns:des="http://DescargaMasivaTerceros.sat.gob.mx">
+           xmlns:des="http://DescargaMasivaTerceros.sat.gob.mx" xmlns:xd="http://www.w3.org/2000/09/xmldsig#">
            <s:Header/>
            <s:Body>
-             <des:SolicitaDescarga>
+             <des:SolicitaDescargaRecibidos>
                <des:solicitud>
-                 <des:RfcSolicitante></des:RfcSolicitante>
-                 <des:RfcReceptores>
-                   <des:RfcReceptor></des:RfcReceptor>
-                 </des:RfcReceptores>
                </des:solicitud>
-             </des:SolicitaDescarga>
+             </des:SolicitaDescargaRecibidos>
            </s:Body>
          </s:Envelope>'''
-        xpath = 's:Body/des:SolicitaDescarga/des:solicitud'
+        xpath = 's:Body/des:SolicitaDescargaRecibidos/des:solicitud'
         cer = base64.b64encode(crypto.dump_certificate(crypto.FILETYPE_ASN1, self.certificate))
         soap_request = self.prepare_soap_download_data(cer, arguments, body, xpath)
+        
+        # if isinstance(soap_request, bytes):
+        #    soap_request = soap_request.decode("utf-8")
+        # soap_request = soap_request.replace(
+        #    "http://DescargaMasivaTerceros.sat.gob.mx",
+        #    "http://DescargaMasivaTerceros.gob.mx"
+        # )
 
-        _logger.info("==== SOAP URL: %s", soap_url)
-        _logger.info("==== SOAPAction HEADER: %s", soap_action)
-        _logger.info("==== PRIMERAS 300 CHARS XML:\n%s", soap_request[:300])
+
+        _logger.error("==== SOAP URL: %s", soap_url)
+        _logger.error("==== SOAPAction HEADER: %s", soap_action)
+        _logger.error("==== HEADERS:\n%s", self.get_headers(soap_action, token))
+        _logger.error("==== XML FINAL A ENVIAR ====\n%s", soap_request.decode() if isinstance(soap_request, bytes) else soap_request)
+
         communication = requests.post(
             soap_url,
             soap_request,
@@ -314,12 +340,16 @@ class SAT:
             verify=True,
             timeout=15,
         )
+        
+        _logger.error("11 soap_request_download.. check_response:{} param1 {} y param3 {} ".format(communication,soap_request,token))
+        _logger.error("soap_request_download.. check_response:  param1 {} param2 {} y param3 {} ".format(communication.text,result_xpath,external_nsmap))
         element_response = self.check_response(communication, result_xpath, external_nsmap)
         ret_val = {
             'id_solicitud': element_response.get('IdSolicitud'),
             'cod_estatus': element_response.get('CodEstatus'),
             'mensaje': element_response.get('Mensaje')
         }
+        _logger.error("soap_request_download.. ret_val:  id_solicitud {}  ".format(ret_val))
         return ret_val
 
     def soap_verify_package(self, signature_holder_vat, id_solicitud, token):
